@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import pytesseract
+import easyocr
 import re
 from PIL import Image
 import io
@@ -9,8 +9,8 @@ app = Flask(__name__)
 # Aadhaar number pattern: 12 digits, often grouped as 4-4-4
 AADHAAR_REGEX = r'\b\d{4}\s\d{4}\s\d{4}\b|\b\d{12}\b'
 
-# Optional: If Tesseract is not in PATH
-# pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'  # Update path if needed
+# Initialize easyocr reader
+reader = easyocr.Reader(['en'])
 
 @app.route('/extract_aadhaar', methods=['POST'])
 def extract_aadhaar():
@@ -22,10 +22,16 @@ def extract_aadhaar():
         return jsonify({"error": "Empty file uploaded."}), 400
 
     try:
+        # Convert the uploaded image to a PIL Image object
         image = Image.open(io.BytesIO(image_file.read()))
-        text = pytesseract.image_to_string(image)
 
-        # Find Aadhaar numbers
+        # Use easyocr to extract text from the image
+        result = reader.readtext(image)
+
+        # Extract text (only the string parts of the result)
+        text = ' '.join([item[1] for item in result])
+
+        # Find Aadhaar numbers using the regex
         aadhaar_numbers = re.findall(AADHAAR_REGEX, text)
         aadhaar_numbers = [num.replace(' ', '') for num in aadhaar_numbers]  # Normalize
 
